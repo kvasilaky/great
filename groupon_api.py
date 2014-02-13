@@ -4,7 +4,6 @@ import sys #not really sure if this is needed or not
 import json #needed for handling JSON although not intuitive
 import datetime #this allows us to use the current date as a timestampt
 import os
-#import pdb;pdb.set_trace()
 import time
 import random
 random.seed()
@@ -21,41 +20,33 @@ finally:
     f.close()
 
 
-#url='https://api.groupon.com/v2/deals.json?division_id=washington-dc&client_id=bd19a7454e6c582bd8283ba74e5871faa7d8435e'
 
 for city in cities:
         c= str(city).strip('[\']')
         print "Processing Groupon Data for --" + c
         url='https://api.groupon.com/v2/deals.json?division_id=' + c + '&client_id=bd19a7454e6c582bd8283ba74e5871faa7d8435e'
-        #url='https://api.groupon.com/v2/deals.json?division_id=hampton-roads,washington-dc,san-diego,seattle,takoma,san-antonio,honolulu,colorado-springs,austin,raleigh-durham,fort-collins,fort-myers-cape-coral,fort-wayne,fort-worth,fort-lauderdale&client_id=bd19a7454e6c582bd8283ba74e5871faa7d8435e'
         response = urllib2.urlopen(url)
         html = response.read()
         data = json.loads(html)
         deals = data["deals"]
 
-        #relative to: /Users/kathrynvasilaky/Documents/TS/groupon
-        #os.chdir('./groupondump')
+
         #here writing the json output to a text file without formatting
         pathdump = "./groupondump/"
         fname='groupondump-'+c+'-'+str(datetime.datetime.now())+'.txt'
         f=open(pathdump+fname,'w')
         f.write(str(data))
         f.close()
-        #os.chdir('/Users/kathrynvasilaky/Documents/TS/groupon/')
-
+       
 
                        
 
-        #g = ("/Users/kathrynvasilaky/Documents/TS/groupon/grouponall.csv")
-        #b = ("/Users/kathrynvasilaky/Documents/TS/groupon/grouponrecent.csv")
         g = ("./grouponall.csv")
         b = ("./grouponrecent.csv")
         #c = ("groupontest.csv")
         writer = csv.writer(open(g,'a'),dialect='excel')
         writer1 = csv.writer(open(b,'a'),dialect='excel')
-        #writer.writerow(('id','merchant','deal_title','yipit_title','city','value','price','tag','discount', 'source','yipit_url','date_added','end_date','active','grouponRating','finePrint', 'phone', 'city', 'address', 'city', 'merchant_city1','merchant_city2', 'merchant_city3',  merchanturl'))
-        #writer.writerow(('Company','Deal_Description','Phone','Street','City','State','Zip','Deal_Value','Price', 'Website','Operating_City','Offer_Type', 'Category','Lead_Source','Competitor_Deal_Source', 'Previous_Daily_Deal_URL', 'Deal_Restrictions','id', 'discount', 'date_add','date_end', 'sold', 'soldmessage','soldout','istipped','tippingpoint','tippedat','grouponRating', 'areas'))
-
+        
         for deal in deals:  #some variables weren't quite named correctly
                 
                 try:
@@ -240,8 +231,6 @@ for city in cities:
 
                 writer.writerow((Company,Deal_Description,Phone,Street,City,State,Zip,Deal_Value,Price, Website,Operating_City,Offer_Type, Category,Lead_Source,Competitor_Deal_Source, Previous_Daily_Deal_URL, Deal_Restrictions,id, discount, date_add,date_end, sold, soldmessage,soldout,istipped,tippingpoint,tippedat,grouponRating, areas))
                 writer1.writerow((Company,Deal_Description,Phone,Street,City,State,Zip,Deal_Value,Price, Website,Operating_City,Offer_Type, Category,Lead_Source,Competitor_Deal_Source, Previous_Daily_Deal_URL, Deal_Restrictions,id, discount, date_add,date_end, sold, soldmessage,soldout,istipped,tippingpoint,tippedat,grouponRating, areas))
-                #writer.writerow([id,merchant,deal_title,city,valueraw,priceraw,tagslug,discountraw, buy_url,date_added,end_date,sold,soldmessage,istipped,soldout,tippingpoint,tippedat,active,grouponRating,finePrint, phone, address, city, merchant_city1, merchant_city2, merchant_city3, state, merchanturl]) 
-                # this needed to be indented so that it was included in the for loop
                 wait = random.choice(range(1,3))
                 time.sleep(wait)
                 
