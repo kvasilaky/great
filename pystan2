@@ -1,0 +1,213 @@
+# -*- coding: utf-8 -*-
+# <nbformat>3.0</nbformat>
+
+# <codecell>
+
+#http://users.obs.carnegiescience.edu/cburns/ipynbs/PyStan.html
+from numpy import *
+Nobs = 20
+x_true = random.uniform(0,10, size=Nobs)
+y_true = random.uniform(-1,1, size=Nobs)
+alpha_true = 0.5
+beta_x_true = 1.0
+beta_y_true = 10.0
+eps_true = 0.5
+z_true = alpha_true + beta_x_true*x_true + beta_y_true*y_true
+z_obs = z_true + random.normal(0, eps_true, size=Nobs)
+
+# <codecell>
+
+x_true
+
+# <codecell>
+
+y_true
+
+# <codecell>
+
+z_true
+
+# <codecell>
+
+z_obs
+
+# <codecell>
+
+py.plot(y_true,z_true, 'o')
+py.show()
+
+# <codecell>
+
+%matplotlib inline
+from matplotlib import pyplot as plt
+plt.figure(figsize=(12,6))
+plt.subplot(1,2,1)
+plt.scatter(x_true, z_obs, c=y_true, marker='o')
+plt.colorbar()
+plt.xlabel('X')
+plt.ylabel('Z')
+plt.subplot(1,2,2)
+plt.scatter(y_true, z_obs, c=x_true, marker='o')
+plt.colorbar()
+plt.xlabel('Y')
+plt.ylabel('Z')
+
+# <codecell>
+
+data = {'N':Nobs, 'x':x_true, 'y':y_true, 'z':z_obs}
+
+# <codecell>
+
+data
+
+# <codecell>
+
+model = """
+data {
+   int<lower=4> N; // Number of data points
+   real x[N];      // the 1st predictor
+   real y[N];      // the 2nd predictor
+   real z[N];      // the outcome
+}
+parameters {
+   real alpha;     // intercept
+   real betax;     // x-slope
+   real betay;     // y-slope
+   real<lower=0> eps;       // dispersion
+}
+model {
+   for (i in 1:N)
+      z[i] ~ normal(alpha + betax * x[i] + betay * y[i], eps);
+}"""
+
+import pystan
+fit = pystan.stan(model_code=model, data=data, iter=1000, chains=4)
+
+# <codecell>
+
+print fit
+
+# <codecell>
+
+p = fit.plot()
+
+# <codecell>
+
+fit2 = pystan.stan(fit=fit, data=data, iter=10000, chains=4)
+temp = fit2.plot()
+
+# <codecell>
+
+import pandas as pd
+samples = fit2.extract(permuted=True)
+params = pd.DataFrame({'a': samples['alpha'], 'bx': samples['betax'], 'by': samples['betay']})
+alpha = median(samples['alpha'])
+beta_x = median(samples['betax'])
+beta_y = median(samples['betay'])
+eps = median(samples['eps'])
+
+# <codecell>
+
+# make a prediction vector (the values of X for which you want to predict)
+predX = random.uniform(0,10, size=Nobs)
+predY = random.uniform(-1,1, size=Nobs)
+new_data = pd.DataFrame({'predX': predX, 'predY': predY})
+print new_data
+
+# <codecell>
+
+# next, make a prediction function. Making a function makes every step following this 10 times easier
+def stanPred(p):
+ fitted = p[0] + p[1]*x_true + p[2]*y_true    
+ return pd.Series({'fitted': fitted})
+
+# <codecell>
+
+# get the median parameter estimates
+medParam = params.median()
+#intercept
+medParam[0]
+#beta estimate on X
+medParam[1]
+#beta estimate on Y
+medParam[2]
+
+#This is a standard "economists'" prediction
+zhat = stanPred(medParam)
+zhat
+
+# <codecell>
+
+# get the predicted values for each chain. This is super convenient in pandas because
+# it is possible to have a single column where each element is a list
+params['chainPreds'] = params.apply(stanPred, axis = 1)
+
+# <codecell>
+
+params.iloc[1]['chainPreds'].hist()
+
+# <codecell>
+
+import numpy as np
+import pylab as py
+## PLOTTING
+# create a random index for chain sampling
+idx = np.random.choice(1999, 50)
+# plot each chain. chainPreds.iloc[i, 0] gets predicted values from the ith set of parameter estimates
+for i in range(len(idx)):
+ py.plot(predY, chainPreds.iloc[idx[i], 0],'ko')
+ 
+# original data
+py.plot(y_true, z_true, '<')
+# fitted values
+py.plot(predY, zhat['fitted'], 'o')
+ 
+# supplementals
+#py.xlabel('X')
+#py.ylabel('Y')
+ 
+py.show()
+print "len idx = {}".format(len(idx))
+
+
+# <codecell>
+
+density(predY)
+
+# <codecell>
+
+params.a.hist()
+
+# <codecell>
+
+## PLOTTING
+# create a random index for chain sampling
+idx = np.random.choice(1999, 50)
+# plot each chain. chainPreds.iloc[i, 0] gets predicted values from the ith set of parameter estimates
+for i in range(len(idx)):
+ py.plot(predY, chainPreds.iloc[idx[i], 0],'ko')
+ 
+# original data
+py.plot(y_true, z_true, '<')
+# fitted values
+py.plot(predY, zhat['fitted'], 'o')
+ 
+# supplementals
+#py.xlabel('X')
+#py.ylabel('Y')
+ 
+py.show()
+print "len idx = {}".format(len(idx))
+
+# <codecell>
+
+for ndx, row in enumerate(params.iterrows()):
+    row = row[1]
+    output = row['chainPreds']
+    py.plot(x_true, output, 'o', color='lightgrey', markeredgecolor='none')
+    
+    if ndx>1000:
+        break
+        
+py.plot(x_true, z_true, '.', color='red')
+
