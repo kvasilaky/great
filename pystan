@@ -1,0 +1,250 @@
+# -*- coding: utf-8 -*-
+# <nbformat>3.0</nbformat>
+
+# <markdowncell>
+
+# http://climateecology.wordpress.com/2014/01/27/pystan-a-basic-tutorial-of-bayesian-data-analysis-in-python/
+
+# <codecell>
+
+%pylab inline
+
+# <codecell>
+
+# module import
+import pystan
+import numpy as np
+import pylab as py
+import pandas as pd
+from matplotlib import animation
+
+# <markdowncell>
+
+# #Make Data
+
+# <codecell>
+
+x = np.arange(1, 100, 5)
+
+# <codecell>
+
+x
+
+# <codecell>
+
+y = 2.5 + .5 * x + np.random.randn(20) * 10
+
+# <codecell>
+
+y
+
+# <codecell>
+
+N = len(x)
+# plot the data
+py.plot(x,y, 'o')
+py.show()
+
+# <codecell>
+
+# STAN model (this is the most important part)
+regress_code = """
+data {
+ int<lower = 0> N; // number of observations
+ real y[N]; // response variable
+ real x[N]; // predictor variable
+}
+parameters {
+ real a; // intercept
+ real b; // slope
+ real<lower=0> sigma; // standard deviation
+}
+transformed parameters {
+ real mu[N]; // fitted values
+ 
+for(i in 1:N)
+ mu[i] <- a + b*x[i];
+}
+model {
+ y ~ normal(mu, sigma);
+}
+"""
+
+# make a dictionary containing all data to be passed to STAN
+regress_dat = {'x': x,
+ 'y': y,
+ 'N': N}
+ 
+# Fit the model
+fit = pystan.stan(model_code=regress_code, data=regress_dat,
+ iter=1000, chains=4)
+ 
+# model summary
+print fit
+
+# <codecell>
+
+# show a traceplot of ALL parameters. This is a bear if you have many
+fit.traceplot()
+py.show()
+
+# <codecell>
+
+# Instead, show a traceplot for single parameter
+fig=fit.plot(['mu'])
+py.show()
+ 
+
+# <codecell>
+
+##### PREDICTION ####
+ 
+# make a dataframe of parameter estimates for all chains
+#samples is a built in pystan function to sample from the posterior
+samples = fit.extract(permuted=True)
+params = pd.DataFrame({'a': samples['a'], 'b': samples['b']})
+len(samples['a'])
+
+# <codecell>
+
+ndim(params)
+
+# <codecell>
+
+# next, make a prediction function. Making a function makes every step following this 10 times easier
+def stanPred(p):
+ fitted = p[0] + p[1] * predX
+ return pd.Series({'fitted': fitted})
+# make a prediction vector (the values of X for which you want to predict)
+predX = np.arange(1, 100)
+
+# <codecell>
+
+predX
+
+# <codecell>
+
+# get the median parameter estimates
+medParam = params.median()
+#intercept
+medParam[0]
+#beta estimate on X
+medParam[1]
+
+#This is a standard "economists'" prediction
+yhat = stanPred(medParam)
+len(yhat)
+yhat
+
+# <codecell>
+
+#this creates 2000 predictions y=a+b*X(1-100) 
+
+# get the predicted values for each chain. This is super convenient in pandas because
+# it is possible to have a single column where each element is a list
+chainPreds = params.apply(stanPred, axis = 1)
+ 
+
+# <codecell>
+
+chainPreds
+
+# <codecell>
+
+## PLOTTING
+# create a random index for chain sampling
+idx = np.random.choice(1999, 50)
+# plot each chain. chainPreds.iloc[i, 0] gets predicted values from the ith set of parameter estimates
+for i in range(len(idx)):
+ py.plot(predX, chainPreds.iloc[idx[i], 0], color='lightgrey')
+ 
+# original data
+#py.plot(x, y, 'ko')
+# fitted values
+#py.plot(predX, yhat['fitted'], 'k')
+ 
+# supplementals
+py.xlabel('X')
+py.ylabel('Y')
+ 
+py.show()
+
+# <codecell>
+
+#this is the first posterior predicted series, sample of length 100 (there are 2000)
+#y=a_1+b_1X[1:100]
+chainPreds.iloc[idx[1]]
+
+# <codecell>
+
+ py.plot(predX, chainPreds.iloc[idx[1], 0], color='lightgrey')
+
+# <codecell>
+
+## PLOTTING
+# create a random index for chain sampling
+idx = np.random.choice(1999, 50)
+# plot each chain. chainPreds.iloc[i, 0] gets predicted values from the ith set of parameter estimates
+for i in range(len(idx)):
+ py.plot(predX, chainPreds.iloc[idx[i], 0], color='lightgrey')
+ 
+# original data
+#py.plot(x, y, 'ko')
+# fitted values
+py.plot(predX, yhat['fitted'], 'k')
+ 
+# supplementals
+py.xlabel('X')
+py.ylabel('Y')
+ 
+py.show()
+
+# <codecell>
+
+# make a function that iterates over every predicted values in every chain and returns the quantiles. For example:
+ 
+def quantileGet(q):
+    # make a list to store the quantiles
+    quants = []
+ 
+    # for every predicted value
+    for i in range(len(predX)):
+        # make a vector to store the predictions from each chain
+        val = []
+ 
+        # next go down the rows and store the values
+        for j in range(chainPreds.shape[0]):
+            val.append(chainPreds['fitted'][j][i])
+ 
+        # return the quantile for the predictions.
+        quants.append(np.percentile(val, q))
+ 
+    return quants
+ 
+# NOTE THAT NUMPY DOES PERCENTILES, SO MULTIPLE QUANTILE BY 100
+# 2.5% quantile
+lower = quantileGet(2.5)
+#97.5
+upper = quantileGet(97.5)
+ 
+# plot this
+fig = py.figure()
+ax = fig.add_subplot(111)
+ 
+# shade the credible interval
+ax.fill_between(predX, lower, upper, facecolor = 'lightgrey', edgecolor = 'none')
+# plot the data
+ax.plot(x, y, 'ko')
+# plot the fitted line
+ax.plot(predX, yhat['fitted'], 'k')
+ 
+# supplementals
+ax.set_xlabel('X')
+ax.set_ylabel('Y')
+ax.grid()
+ 
+py.show()
+
+# <codecell>
+
+
