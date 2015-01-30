@@ -1,0 +1,106 @@
+clear
+set more off
+
+global data "/Users/kathrynvasilaky/SkyDrive/Thesistake2/experimental 2/"
+cd "$data/the game/new"
+use "$data/the game/game1.dta"
+
+/*This do file does the following: Each person within a village was assigned between 1 and 4 partners to talk to 
+(labeled as n1-n4). Each person was supposed to learn 1 information point from each of these 1-4 partners. 
+This do file tests whether person i did infact learn the information points that partners 1-4 were supposed to 
+transmit to them. The do file loops across each person, her partners, and then her partners' information points, 
+and those stores those information points in 4 new variables called spill1-spill4. Then we compare whether person i's 
+recorded learned information points (numbered 1-12) match any of the information points in spill1-spill4. In this way, 
+we can crosscheck whether person i learned the information points that n1-n4 taught them. */
+
+*ASSIGN A NUMBER VALUE TO EACH VILLAGE
+egen 	villnumber=group(village)
+sum 	villnumber
+*SAVE THE TOTAL NUMBER OF VILLAGES IN LOCAL VAR
+local 	totvill=r(max)
+sort villnumber person
+
+
+save 	"temp\master.dta", replace
+
+*DOWNSIZE THE VARIABLE SET FOR FASTER COMPUTATION
+keep 	village villnumber person name hhdid infopt n1-n4 g*p*
+for 	num 1/4: replace nX=. if nX>14 & nX!=.
+for 	num 1/4: gen spillX=.
+
+foreach 	V of num 1/`totvill' {
+	preserve
+	keep	if villnumber==`V' 
+	count 	
+	local 	nvill=r(N)
+	sort 	person
+				*Z IS THE PERON NO. IN VILLAGE V
+				foreach 	Z of num 1/`nvill' {
+					
+							* Pieces of info the i-th person should have obtained from j-th contact
+							*b IS THE NTH CONNECTION TO PERSON Z, N1-N4, EVERYONE HAS AT LEAST N1~=.
+							foreach b of num 1/4 {
+							*IF nb for the Zthe person IS NOT EMPTY	
+								if n`b'[`Z']!=. {
+								*store the value of that person's id in a local variable.
+								local 			a`b'=n`b'[`Z']
+								*now look up the infopt that partner was taught and store it.
+								qui sum 		infopt in `a`b'' 
+								*now put that value into spill1-spill4. These are the info pts person a should have learned. 
+								qui replace		spill`b'=r(mean) in `Z'
+										
+							}		
+									
+						}																 
+										
+			}				 
+
+*stores the results in datasets by village
+keep	village villnumber person spill*
+save 	"temp\tempvill`V'.dta", replace
+
+restore
+
+}
+
+*merge all the files together
+use 	"temp\tempvill1.dta", clear
+for 	num 2/`totvill' : append using "temp\tempvillX.dta"
+sort villnumber person
+merge	villnumber person using "temp\master.dta"
+
+erase 	"temp\master.dta"
+for 	num 1/`totvill' : erase "temp\tempvillX.dta"
+
+
+
+*FIGURE OUT IF SPILL1-SPILL2 IS EQUAL TO G1-G10, IF YES, THEN ENTER A 1, IF NO ENTER 0
+foreach x of numlist 1/4 {
+	 gen effort`x'=.
+}
+
+*If person i learned her partner j's point, then effortj is set to 1.
+foreach x of numlist 1/4 {
+	replace effort`x'=1 if (spill`x'==g1p1 | spill`x'==g1p2 | spill`x'==g1p3 | spill`x'==g1p4 | spill`x'==g1p5 | spill`x'==g1p6 | spill`x'==g1p7 | spill`x'==g1p8 | spill`x'==g1p9| spill`x'==g1p10) & spill`x'~=. 
+	replace effort`x'=0 if effort`x'==. 
+}
+
+*Person i's total effort of learning from her parnters is the sum of effort_j
+order effort1-effort4 spill1-spill4 g1p*
+gen toteffort=effort1+effort2+effort3+effort4
+foreach n of numlist 1/4{
+	gen sum`n'=.
+	replace sum`n'=1 if n`n'~=.
+	replace n`n'=0 if n`n'==.
+}
+
+*Normalize the effort by the number of people a person was connected to. 
+
+gen totsum=sum1+sum2+sum3+sum4
+gen ntoteffort=toteffort/totsum
+order toteffort ntoteffort totsum effort1-effort4 spill1-spill4 g1p*
+drop sum1 sum2 sum3 sum4 
+keep  toteffort  ntoteffort totsum effort1 effort2 effort3 effort4 spill1 spill2 spill3 spill4 vill id person villnumber g1p*
+rename vill village
+sort village person
+save "C:\katya\prospectus\uganda\experimental\the game\effort.dta", replace
