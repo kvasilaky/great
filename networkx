@@ -1,0 +1,615 @@
+# -*- coding: utf-8 -*-
+# <nbformat>3.0</nbformat>
+
+# <markdowncell>
+
+# NetworkX Documentation:
+# https://networkx.github.io/documentation/latest/reference/linalg.html
+
+# <rawcell>
+
+# Overview
+# 1. Areas of social networks?
+# 1. How networks are stored
+# 2. Creating a network: undirected, directed, weighted networks
+# 3. Saving a graph
+# 4. Visualizing a graph
+# 5. Loading networks from csv files, example
+# 6. Network characteristics: node vs network
+# 7. Twitter example
+
+# <rawcell>
+
+# **Graph theory: Theoretical, equilbrium graph structures and interactions (Academic)
+# http://econ.duke.edu/people/kranton
+# http://www.markusmobius.org/publications
+# http://www.columbia.edu/~at2761/Research.html
+# http://www.cs.columbia.edu/~augustin/publications.html
+# http://web.stanford.edu/~jacksonm/papersarticles.html
+# 
+# **Social network analysis: Studies the data visually, and the network structure (not so much inference based) (CS, startups)
+# http://www.ladamic.com/
+# http://research.microsoft.com/en-us/people/duncan/
+# http://shop.oreilly.com/product/0636920020424.do
+# 
+# **Empirical analysis: Uses network (node, or subgraphs) based measures of the graph in data mining (Facebook, Microsoft)
+# http://eytan.github.io/
+# http://web.mit.edu/sinana/www/
+# http://arxiv.org/pdf/1201.4145.pdf
+# http://research.microsoft.com/en-us/people/duncan/
+
+# <codecell>
+
+import networkx as nx
+#for matrices, generally not needed
+import numpy as np
+#for plotting graphs
+import matplotlib.pyplot as plt
+#or pylab for plotting
+import pylab
+import pandas as pd
+#if you want to see the graphs in line
+%matplotlib inline
+
+# <codecell>
+
+#Networks are stored as adjancey matrices (m by n, or row by column)
+#We'll go through the concepts of how to represent networks in matrices, but hold tight, 
+#because this is not how networkx stores network data
+#A basic matrix structures look like this, where 12 is the relationship from node 1 to node 2 and)
+a = np.matrix('11 12 13; 21 22 23; 31 32 33')
+a
+
+# <codecell>
+
+#Undirected Graphs
+#Suppose the following connections exist between nodes: 1,2; 3,1
+#Then the matrix will look like this to represent the network
+b = np.matrix('0 1 1; 1 0 0; 1 0 0')
+b
+
+# <codecell>
+
+#Directed Graphs
+#Now suppose the connections are directed so that the network represents phone calls
+#Now 1,2 means Person one calls person 2, but not the reverse
+c = np.matrix('0 1 0; 0 0 0;1 0 0')
+c
+
+# <codecell>
+
+#Weighted Graphs
+#Now suppose the connections are weighted so that the network represents the # phone calls
+#Now 1,2 measn Person one calls person 2 5 times in a week, and person three calls person one 2 times a week.
+d = np.matrix('0 5 0; 0 0 0; 2 0 0')
+d
+
+# <markdowncell>
+
+# But networkx doesn't store matrices like this at all. Networkx stores matrices as dictionaries. The bread and better to networkx is adding in nodes, edges (directed or undirected) between nodes, and then attributes, and weights to those nodes.Let's start to build an undirected graph and look at how it's stored. 
+
+# <codecell>
+
+#Nodes and Nodes_from
+#Create the undirected graph
+G=nx.Graph()
+#Add first node in
+G.add_node(1)
+#Add multiple nodes using function "add_nodes_from" and then a list
+G.add_nodes_from([1,2,3])
+#Create nodes in non-increasing circle
+H=nx.path_graph(2)
+#Add those nodes to G
+G.add_nodes_from(H)
+#Or add H as one node
+#G.add_node(H)
+
+# <codecell>
+
+plt.show(nx.draw(G))
+
+# <codecell>
+
+people = {0:"Kate",1:"Bob",2:"Terry",3:"Joe"}
+G=nx.relabel_nodes(G,people)
+plt.show(nx.draw(G))
+
+# <codecell>
+
+#Add Edges
+e=[(0,3), (3,2), (2,1), (1,3)]
+G.add_edges_from(e)
+
+# <codecell>
+
+#Why isn't this showing anything?
+k=nx.adjacency_matrix(G)
+k
+
+# <codecell>
+
+G=nx.relabel_nodes(G,people)
+plt.show(nx.draw(G))
+
+# <codecell>
+
+#Structure of storage
+G.edges()
+
+# <codecell>
+
+#is really just a dictionary
+for n,x in G.adjacency_iter():
+    print n, x
+    for value in x.values():
+        print value
+
+# <codecell>
+
+#So we can walk into the edges and their attributes like we would a dictionary
+G['Joe'] # is the first node
+
+# <codecell>
+
+G['Joe']['Bob'] #is the one/two edge
+
+# <codecell>
+
+G['Joe']['Bob']['distance'] #is the one/two edge
+
+# <codecell>
+
+nx.shortest_path(G,’Bob’,’Joe’) 
+
+# <codecell>
+
+#Add attributes (different from weights)
+G.nodes()
+G.node['Joe']=25
+plt.show(nx.draw(G))
+G.nodes(data=True)
+
+# <codecell>
+
+#Graph attribute        
+G.graph['Group']='A'
+plt.show(nx.draw(G))
+G.graph
+
+# <codecell>
+
+#Edge attribute
+G.add_edge('Joe', 'Bob', calls=4.7 )
+G.add_edges_from([('Joe','Terry'),('Bob','Joe')], distance=5)
+G.edges(data=True)
+
+# <codecell>
+
+#A number of ways to add attributes
+G.add_edges_from([(3,4),(4,5)], color='red')
+G.add_edges_from([(1,2,{'color':'blue'}), (2,3,{'weight':8})])
+G[1][2]['weight'] = 4.7
+G.edge[1][2]['weight'] = 4
+
+# <codecell>
+
+#Build out the graph faster
+G.add_star(10,11,12) #Add a star
+
+# <codecell>
+
+G.add_path(3)	#Add a path
+
+# <codecell>
+
+G.add_cycle(3)	#Add a cycle
+
+# <codecell>
+
+#Saving the graph
+#http://networkx.lanl.gov/reference/readwrite.html
+
+#WHY DOES THIS NOT WORK WITH G?????????
+K=nx.path_graph(4)
+nx.write_gexf(K, "test.gexf")
+#nx.write_gml(G, "test.gml")
+#nx.write_gpickle(G,"test.gpickle")
+#plt.savefig('Group.png')
+#Load the graph back up
+#nx.read_gml('test.gml')
+
+# <codecell>
+
+#Weighted Graph
+#Weighted graphs tell you the weight (tie strength) of the relationship:
+
+#Important for propogation and spread of information
+# Granovetter (1974) "The Strength of Weak Ties"
+
+DG.clear()
+DG=nx.DiGraph()
+DG.add_weighted_edges_from([(0,3,0), (3,2,6), (2,1,.1), (1,3,.7)])
+DG.out_degree(1,weight='weight')
+plt.show(nx.draw(DG))
+
+# <codecell>
+
+DG.edges(data=True)
+
+# <codecell>
+
+#What if you don't have a predetermined weight? You just know Bob called Mary and Mary did not call Bob?
+#A multiedge graph is good for this. You can add the edge in twice. 
+MG=nx.MultiDiGraph()
+MG.add_weighted_edges_from([(0,3,0),(3,0,8), (3,2,6), (2,1,.1), (1,3,.7)])
+plt.show(nx.draw(MG))
+MG.edges(data=True)
+
+# <codecell>
+
+#Networkx doesn't produce the prettiest directed graphs
+from IPython.display import Image
+g = nx.dodecahedral_graph()
+##This does not work????
+d = nx.to_pydot(g)
+png_str = d.create_png()
+Image(data=png_str)
+
+# <codecell>
+
+#Built in Graphs
+#networkx has plenty of built in graphs
+#Deterministic graphs
+plt.show(nx.draw(nx.barbell_graph(10,10)))
+
+# <codecell>
+
+plt.show(nx.draw(nx.lollipop_graph(10,10)))
+
+# <codecell>
+
+plt.show(nx.draw(nx.complete_graph(10)))
+
+# <codecell>
+
+#Stochastic graphs
+#erdos-renyi graph with 10 nodes, and edge connection probability .6
+#Often used as a comparative graph
+plt.show(nx.draw(nx.gnp_random_graph(10,.5)))
+#small world graph (courses: Lada Adamic, Matt Jackson)
+help(nx.watts_strogatz_graph)
+
+# <codecell>
+
+#Loading from a csv
+a=np.genfromtxt("lmschigh_guess.csv",delimiter=',',skiprows=0)
+
+# <codecell>
+
+#Convert to networkx graph
+a=np.array(a)
+a[a <0] = 0
+a[a !=0] = 1
+G = nx.Graph(a)
+
+# <codecell>
+
+#You Can throw that into a function
+if __name__ == '__main__':
+    path = "*guess.csv"
+    for cnt,fname in enumerate(glob.glob(path)):
+        print(fname)
+        a=np.genfromtxt(fname,delimiter=',',skiprows=0)
+        a=np.array(a)
+
+        #replace matrix with 0 if =-99
+        a[a <0] = 0
+        weighted_edge_list = []
+        rows,cols = a.shape
+        for i in xrange(rows):
+            for j in xrange(cols):
+                weighted_edge_list.append((j,i,a[i,j]))
+
+        G_weighted = nx.DiGraph()
+        G_weighted.add_weighted_edges_from(weighted_edge_list)
+
+        #replace matrix with 1 if not equal 0
+        a[a !=0] = 1
+
+        #convert to network matrix
+        G = nx.Graph(a)
+
+# <codecell>
+
+#Let's use a ready made graph for the next steps
+kn=nx.read_gml('karate.gml')
+plt.show(nx.draw(kn))
+kn.number_of_nodes()
+kn.number_of_edges()
+
+# <rawcell>
+
+# #Visualization
+# #There's more than one way to visualize a graph
+# #The networkx default is a force-directed graph
+# 
+# The full list (Adamic, Chapter 4): 
+#     Random layout: nodes are placed randomly
+#     Circular layout: circular layouts place all the nodes in a circle and then add edges between them
+#     Grid layout: nodes are in a grid
+#     Force-directed layout: layout is dynamic and determined by the connections between the nodes
+#     Yifan Hu layout
+#     Harel-Koren fast multiscale layout: force-directed layout algorithms but uses optimizations in the 
+#         underlying code to make the algorithm computationally efficient
+#         
+# See: http://networkx.lanl.gov/reference/drawing.html#module-networkx.drawing.nx_pydot
+# 
+# #Coloring
+
+# <codecell>
+
+plt.show(nx.circular_layout(kn)) #Position nodes on a circle
+
+# <codecell>
+
+nx.random_layout(kn) #Position nodes uniformly at random in the unit square.
+
+# <codecell>
+
+#Network specific measures (not defined for multigraphs)
+deg=nx.degree_centrality(kn) #a node with few influential contacts can matter more than the guy who knows everyone
+eg=nx.eigenvector_centrality(kn) #not defined for multi graphs
+
+#Why doesn't this work???
+print("Closeness centrality")
+c=closeness_centrality(G)
+for v in G.nodes():
+    print("%0.2d %5.3f"%(v,c[v]))
+
+# <codecell>
+
+#export it to a dataframe
+import pandas as pd
+df = pd.DataFrame(eg)
+
+# <codecell>
+
+#export it to a list
+eglist = []
+idlist= []
+
+for key, value in eg.iteritems():
+    eglist.append(value)
+    idlist.append(key)
+    
+#test={'eg':eglist,'id':idlist}
+eglist
+
+# <codecell>
+
+#Graph specific measures
+#Centralizaiton=if centrality is more evenly distributed, then the centralization of the network is low
+
+#Connected components
+con=nx.number_connected_components(kn)
+len(nx.connected_component_subgraphs(kn))
+x=[len(i) for i in nx.connected_component_subgraphs(kn)]
+#Why is this not working??
+plot.hist(x)
+
+# <codecell>
+
+#Density=compares the number of edges that exist in a network to the number of edges that could possibly exist
+nx.density(kn)
+
+# <codecell>
+
+#Degree distribution=how many nodes have each possible degree
+in_degrees = kn.in_degree() # dictionary node:degree
+in_values = sorted(set(in_degrees.values()))
+in_hist = [in_degrees.values().count(x) for x in in_values]
+plt.figure()
+plt.plot(in_values,in_hist,'ro-') # in-degree
+plt.plot(out_values,out_hist,'bv-') # out-degree
+plt.legend(['In-degree','Out-degree'])
+plt.xlabel('Degree')
+plt.ylabel('Number of nodes')
+plt.title('Network')
+plt.savefig('hartford_degree_distribution.pdf')
+plt.close()
+
+# <codecell>
+
+#Write your own function
+def avg_neigh_degree(g):
+ data = {}
+ for n in g.nodes():
+ if g.degree(n):
+ data[n] = float(sum(g.degree(i) for i in g[n]))/
+g.degree(n)
+ return data
+
+# <codecell>
+
+#Example: finding Strong Ties (an example from "Working with Social Graphs")
+
+
+# <codecell>
+
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Sep 29 22:13:18 2013
+
+@author: kathrynvasilaky
+"""
+from twitter import TwitterStream, OAuth
+from pprint import pprint
+import networkx as net
+import csv #needed for reading/writing csv files
+import sys #not really sure if this is needed or not
+import json #needed for handling JSON although not intuitive
+import datetime #this allows us to use the current date as a timestampt
+import os
+import networkx as net
+import json
+import pylab
+
+
+#enter your keys inside the quotes
+consumer_key = "iCbQd5Idf57eP4Ar0VUgA"
+consumer_secret = "fRRyOLRxH2PbKINIpSZc9M8M5i90cfTjHS6TSy5Wg"
+access_token = "163715685-2ASGXoM1hoVrZlakoFPPoFW6lk2Q0xpT7PZSgCfL"
+access_token_secret = "oUDjyHdt2qi0RzLs9F6M6ssWpmbASt2EvYTJwfNqZUI"
+    
+os.chdir('/Users/kathrynvasilaky/SkyDrive/Statscom/twitter_SNA')
+path="/Users/kathrynvasilaky/SkyDrive/Statscom/twitter_SNA"
+
+twitter_stream = TwitterStream(auth=OAuth(token=access_token, token_secret=access_token_secret, consumer_key=consumer_key, consumer_secret=consumer_secret))
+
+#Comma separated list of words to track
+keywords = 'kittens, economics'
+people=[123,124,125]
+
+tweets = twitter_stream.statuses.filter(track=keywords)
+retweets=net.DiGraph()
+c = 1
+print "Stream Initiated..."
+while c < 10:   # Change this number to collect more tweets
+    tweet = tweets.next()  #get next tweet from stream
+    #print x
+    author=tweet['user']['screen_name']
+    print author  
+    entities=tweet['entities']
+    mentions=entities['user_mentions']
+ 
+    for rt in mentions:
+        alter=rt['screen_name']
+        print alter
+        retweets.add_edge(author,alter)
+    c += 1
+
+net.draw(retweets)
+pylab.show(retweets)
+
+# <codecell>
+
+#Divide up the graph
+#first one is the index, the second element is the content of each element
+#how can we know that in advance?
+for n,x in FX.adjacency_iter():
+    print n,x
+    #for each element of the dictionary, step in and get the value and weight
+    for y,z in x.items():
+        print y,z
+        #captute the weight, which is the 2nd element
+        data=z['weight']
+        #print the weight
+        print data
+        if data<0.5: print('(%d, %d, %.3f)' % (n,y,data))
+
+# <rawcell>
+
+# Some asides: 
+# [] can indicate a list, or athey can indicate how you index into a list, or they can indicate a key in a dictionary
+# () can indicated a tuple, but can also indicate the parameters you pass into a function
+# {} indicate a dictionary
+# 
+# ipython
+# esc outside of the cell, scrool up/down with j/k, dd deletes cell
+# 
+# What are the differences between?:
+# iterkeys() #gives the keys of the dictionary
+# iteritems() #returns all items in dictionary, one by one
+# items() #returns all items of dictionary at once (imagine the librian carrying all books on cats back. Neither of you could hold all of them)
+
+# <markdowncell>
+
+# Some tutorials online: 
+# 
+# https://www.udacity.com/wiki/creating-network-graphs-with-python
+# 
+# http://snap.stanford.edu/snappy/
+# 
+# http://www.python-course.eu/networkx.php
+# 
+# http://networkx.lanl.gov/networkx_tutorial.pdf
+# 
+# http://www-rohan.sdsu.edu/~gawron/python_for_ss/course_core/book_draft/Social_Networks/Networkx.html
+# 
+# http://networkx.github.io/documentation/networkx-1.9.1/tutorial/tutorial.html
+# 
+# http://www.cl.cam.ac.uk/~cm542/teaching/2010/stna-pdfs/stna-lecture8.pdf
+# 
+# Courses:
+# 
+# https://www.coursera.org/course/networksonline
+# 
+# https://www.coursera.org/course/sna
+# 
+# http://files.asimihsan.com/courses/social-network-analysis-2012/notes/social_network_analysis.html
+
+# <codecell>
+
+#Doesn't work, needs to make sense
+nx.clustering_coefficient(kn)
+nx.current_flow_betweenness_centrality(kn)
+
+# <codecell>
+
+
+# <codecell>
+
+import networkx as nx
+
+def girvan_newman (G):
+
+    if len(G.nodes()) == 1:
+        return [G.nodes()]
+
+    def find_best_edge(G0):
+        """
+        Networkx implementation of edge_betweenness
+        returns a dictionary. Make this into a list,
+        sort it and return the edge with highest betweenness.
+        """
+        eb = nx.edge_betweenness_centrality(G0)
+        eb_il = eb.items()
+        eb_il.sort(key=lambda x: x[1], reverse=True)
+        return eb_il[0][0]
+
+    components = nx.connected_component_subgraphs(G)
+
+    while len(components) == 1:
+        G.remove_edge(*find_best_edge(G))
+        components = nx.connected_component_subgraphs(G)
+
+    result = [c.nodes() for c in components]
+
+    for c in components:
+        result.extend(girvan_newman(c))
+
+    return result
+
+# <codecell>
+
+#Weighted links
+import math
+kn=nx.read_gml('weighted_karate.gml')
+
+# <codecell>
+
+#where does this come from? kn.get_edge_data(*x)[0]['value']
+#also, why is this now like a r function with arguments? and not kn.edges.sort()?
+
+all_edges=sorted(kn.edges(), key= lambda x: kn.get_edge_data(*x)[0]['value'], reverse=True)
+
+# <codecell>
+
+#? Don't understand this
+from collections import Counter
+all_node_ctr = Counter()
+for (u,v) in all_edges:
+    for x in (u,v):
+        all_node_ctr[x] += 1
+    print '%-4s %-4s %.3f' %(u,v,weight)
+
