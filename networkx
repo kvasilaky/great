@@ -510,10 +510,10 @@ import pylab
 
 
 #enter your keys inside the quotes
-consumer_key = "iCbQd5Idf57eP4Ar0VUgA"
-consumer_secret = "fRRyOLRxH2PbKINIpSZc9M8M5i90cfTjHS6TSy5Wg"
-access_token = "163715685-2ASGXoM1hoVrZlakoFPPoFW6lk2Q0xpT7PZSgCfL"
-access_token_secret = "oUDjyHdt2qi0RzLs9F6M6ssWpmbASt2EvYTJwfNqZUI"
+consumer_key = ""
+consumer_secret = ""
+access_token = "-"
+access_token_secret = ""
     
 os.chdir('/Users/kathrynvasilaky/SkyDrive/Statscom/twitter_SNA')
 path="/Users/kathrynvasilaky/SkyDrive/Statscom/twitter_SNA"
